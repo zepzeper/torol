@@ -1,0 +1,22 @@
+{
+    "name": "zepzeper/torol",
+    "description": "A simple and flexible Event Dispatcher library in PHP.",
+    "type": "library",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Zepzeper\\Torol\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "zepzeper",
+            "email": "wouterschiedam98@gmail.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require-dev": {
+        "phpstan/phpstan": "2.1.x-dev",
+        "phpunit/phpunit": "^12.3@dev"
+    }
+}
