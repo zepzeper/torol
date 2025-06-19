@@ -26,8 +26,7 @@ class EventDispatcher implements EventDispatcherInterface
 			$this->listeners[$eventName] = [];
 			$this->sorted[$eventName] = true;
 		}
-		if (!isset($this->listener[$eventName][$priority])) {
-
+		if (!isset($this->listeners[$eventName][$priority])) {
 			$this->listeners[$eventName][$priority] = [];
 		}
 
@@ -35,6 +34,21 @@ class EventDispatcher implements EventDispatcherInterface
 
 		$this->sorted[$eventName] = false;
 	}
+
+	/**
+	 * {@inheritdoc}
+	 */
+	public function removeListener(string $eventName, callable $listener): void
+	{
+		if (!$this->listeners[$eventName]) { return; }
+
+		foreach ($this->listeners[$eventName] as $listener) {
+
+		}
+
+		$this->sorted[$eventName] = false;
+	}
+
 
 	/**
 	 * {@inheritdoc}

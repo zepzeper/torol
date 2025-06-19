@@ -18,6 +18,15 @@ interface EventDispatcherInterface
      */
     public function addListener(string $eventName, callable $listener, int $priority = 0): void;
 
+		/**
+     * Removes an event listener for a specific event.
+     *
+     * @param string   	$eventName The name of the event.
+     * @param callable 	$listener  The listener callable that will be triggered when the event is dispatched.
+     * @return void
+     */
+		public function removeListener(string $eventName, callable $listener): void;
+
     /**
      * Dispatches an event to all registered listeners.
      *

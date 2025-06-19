@@ -13,8 +13,9 @@ class TestEvent extends ZepzeperAbstractEvent
 {
 	public string $message;
 
-	public function __construct(string $message)
+	public function __construct(string $message, array $data = [])
 	{
+		parent::__construct($data);
 		$this->message = $message;
 	}
 }
@@ -24,11 +25,12 @@ class TestListener
 {
 	public string $receivedMessage = '';
 	public bool $wasCalled = false;
+	public array $executionOrder = [];
 
 	public function onTestEvent(TestEvent $event): void
 	{
-		$this->receivedMessage = $event->message;
 		$this->wasCalled = true;
+		$this->receivedMessage = $event->message;
 	}
 }
 
@@ -71,4 +73,53 @@ class EventDispatcherTest extends TestCase
 
 		$this->assertTrue($dispatchedEvent->isPropagationStopped(), 'Event propagation should be stopped.');
 	}
+
+	public function testEventSortingPriority(): void
+	{
+		$dispatcher = new EventDispatcher();
+		$event = new TestEvent("Priority Test!");
+
+		$callOrder = [];
+
+		$listenerLowPriority = $this->createMock(TestListener::class);
+		$listenerNormalPriority = $this->createMock(TestListener::class);
+		$listenerHighPriority = $this->createMock(TestListener::class);
+		$listenerAnotherHighPriority = $this->createMock(TestListener::class);
+
+		$listenerHighPriority->expects($this->once())
+											 ->method('onTestEvent')
+											 ->willReturnCallback(function (TestEvent $e) use (&$callOrder) {
+												 $callOrder[] = 'high';
+											 });
+
+		$listenerAnotherHighPriority->expects($this->once())
+															->method('onTestEvent')
+															->willReturnCallback(function (TestEvent $e) use (&$callOrder) {
+																$callOrder[] = 'another_high';
+															});
+
+		$listenerNormalPriority->expects($this->once())
+												 ->method('onTestEvent')
+												 ->willReturnCallback(function (TestEvent $e) use (&$callOrder) {
+													 $callOrder[] = 'normal';
+												 });
+
+		$listenerLowPriority->expects($this->once())
+											->method('onTestEvent')
+											->willReturnCallback(function (TestEvent $e) use (&$callOrder) {
+												$callOrder[] = 'low';
+											});
+
+
+		$dispatcher->addListener(TestEvent::class, [$listenerNormalPriority, 'onTestEvent'], 0);
+		$dispatcher->addListener(TestEvent::class, [$listenerHighPriority, 'onTestEvent'], 100);
+		$dispatcher->addListener(TestEvent::class, [$listenerLowPriority, 'onTestEvent'], -50);
+		$dispatcher->addListener(TestEvent::class, [$listenerAnotherHighPriority, 'onTestEvent'], 100);
+
+		$dispatcher->dispatch($event);
+
+		$this->assertEquals(['high', 'another_high', 'normal', 'low'], $callOrder, 'Listeners should be executed in correct priority order.');
+
+	}
 }
+
