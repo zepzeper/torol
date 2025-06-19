@@ -14,6 +14,13 @@ interface EventInterface
 	public function getName(): string;
 
 	/**
+	 * Event data.
+	 *
+	 * @return array
+	 */
+	public function getData(): array;
+
+	/**
 	 * Stop the event propagation.
 	 *
 	 * @return string

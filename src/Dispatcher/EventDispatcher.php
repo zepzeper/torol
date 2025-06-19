@@ -8,20 +8,32 @@ class EventDispatcher implements EventDispatcherInterface
 {
 
 	/**
-	 * @var array<string, list<callable>> Stores listeners indexed by event eventName.
+	 * @var array<string, array<int, list<callable>>> Stores listeners indexed by event eventName.
 	 */
 	private array $listeners = [];
 
 	/**
+	 * @var array<string, bool> Stores listeners indexed by event eventName.
+	 */
+	private array $sorted = [];
+
+	/**
 	 * {@inheritdoc}
 	 */
-	public function addListener(string $eventName, callable $listener): void
+	public function addListener(string $eventName, callable $listener, int $priority = 0): void
 	{
 		if (!isset($this->listeners[$eventName])) {
 			$this->listeners[$eventName] = [];
+			$this->sorted[$eventName] = true;
+		}
+		if (!isset($this->listener[$eventName][$priority])) {
+
+			$this->listeners[$eventName][$priority] = [];
 		}
 
-		$this->listeners[$eventName][] = $listener;
+		$this->listeners[$eventName][$priority][] = $listener;
+
+		$this->sorted[$eventName] = false;
 	}
 
 	/**
@@ -35,6 +47,11 @@ class EventDispatcher implements EventDispatcherInterface
 			return $event; // No listeners found
 		}
 
+		if (!$this->sorted[$eventName]) {
+			$this->doSortListener($eventName);
+		}
+
+		// Now iterate over the *sorted* listeners (which are flattened after doSortListeners)
 		foreach ($this->listeners[$eventName] as $listener) {
 			if ($event->isPropagationStopped()) {
 				break; // halted
@@ -47,4 +64,29 @@ class EventDispatcher implements EventDispatcherInterface
 		return $event;
 	}
 
+	/**
+	 * Sorts the listeners for a given event name by priority (highest first)
+	 * and flattens the structure for efficient iteration during dispatch.
+	 *
+	 * @param string $eventName The name of the event whose listeners need sorting.
+	 * @return void
+	 */
+	private function doSortListener(string $eventName): void 
+	{
+		$listenerByPriority = $this->listeners[$eventName];
+
+		krsort($listenerByPriority);
+
+		$sortedListeners = [];
+		foreach ($listenerByPriority as $priorityListeners) {
+			// Merge all listeners from this priority bucket into the final sorted list
+			foreach ($priorityListeners as $listener) {
+				$sortedListeners[] = $listener;
+			}
+		}
+
+		$this->listeners[$eventName] = $sortedListeners;
+
+		$this->sorted[$eventName] = true;
+	}
 }
