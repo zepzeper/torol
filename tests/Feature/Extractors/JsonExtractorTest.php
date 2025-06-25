@@ -1,6 +1,6 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Extractors;
 
 use Torol\Extractors\JsonExtractor;
 use Torol\Loaders\CallbackLoader;

@@ -1,17 +1,15 @@
 <?php
 
-namespace Tests\Feature;
+namespace Tests\Feature\Extractors;
 
 use PDO;
 use PDOException;
-use Torol\Extractors\DatabaseExtractor as TorolDatabaseExtractor;
 use Torol\Loaders\CallbackLoader;
-use Zepzeper\Torol\Extractors\DatabaseExtractor;
-use Zepzeper\Torol\Pipeline;
-use Zepzeper\Torol\Row;
+use Torol\Extractors\DatabaseExtractor;
+use Torol\Pipeline;
+use Torol\Row;
 
 it('can extract data from a database using a pdo connection', function () {
-    // This requires the pdo_sqlite extension to be enabled in PHP.
     try {
         $pdo = new PDO('sqlite::memory:');
     } catch (PDOException $e) {
@@ -26,7 +24,7 @@ it('can extract data from a database using a pdo connection', function () {
     $results = [];
 
     $query = "SELECT id, name, email FROM users ORDER BY id ASC";
-    Pipeline::from(new TorolDatabaseExtractor($pdo, $query))->map(fn (Row $row) => $row->set('name', strtoupper($row->get('name'))))->load(new CallbackLoader(function (Row $row) use (&$results) {
+    Pipeline::from(new DatabaseExtractor($pdo, $query))->map(fn (Row $row) => $row->set('name', strtoupper($row->get('name'))))->load(new CallbackLoader(function (Row $row) use (&$results) {
             $results[] = $row->toArray();
     }));
 
