@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="./vendor/phpunit/phpunit/phpunit.xsd"
+    bootstrap="vendor/autoload.php"
+    colors="true"
+>
+    <!--
+        This is the main configuration file for PHPUnit.
+        Pest uses this file under the hood.
+        bootstrap="vendor/autoload.php": Loads all your project dependencies before tests run.
+        colors="true": Makes the test output in the terminal much easier to read.
+    -->
+
+    <testsuites>
+        <testsuite name="Unit">
+            <directory suffix="Test.php">./tests/Unit</directory>
+        </testsuite>
+        <testsuite name="Feature">
+            <directory suffix="Test.php">./tests/Feature</directory>
+        </testsuite>
+    </testsuites>
+
+    <source>
+        <!--
+            Defines which directories contain the source code you want to test
+            and measure code coverage for. When you generate a coverage report,
+            PHPUnit will look at the files in this directory.
+        -->
+        <include>
+            <directory suffix=".php">./src</directory>
+        </include>
+    </source>
+
+</phpunit>

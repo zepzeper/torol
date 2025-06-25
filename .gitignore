@@ -1,0 +1,4 @@
+vendor/*
+.editorconfig
+.phpcs-cache
+.phpactor.json
