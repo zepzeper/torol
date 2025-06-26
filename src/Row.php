@@ -40,6 +40,8 @@ class Row
 	public function remove(string $key): self
 	{
 		unset($this->data[$key]);
+
+        return $this;
 	}
 
 	/**

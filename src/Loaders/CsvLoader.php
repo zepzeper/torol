@@ -44,5 +44,6 @@ class CsvLoader implements LoaderInterface
         }
 
         fclose($handle);
+		return $rowCount;
     }
 }

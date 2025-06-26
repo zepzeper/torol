@@ -11,7 +11,7 @@ use Torol\Contracts\LoaderInterface;
 
 class Pipeline
 {
-    private const SKIP = new stdClass();
+    private static $SKIP;
 
     private Traversable $iterator;
     private $errorHandler = null;
@@ -47,7 +47,7 @@ class Pipeline
      */
     public function filter(callable $callback): self
     {
-        return $this->pipe(fn(Row $row) => $callback($row) ? $row : self::SKIP);
+        return $this->pipe(fn(Row $row) => $callback($row) ? $row : self::getSkip());
     }
 
     /**
@@ -112,7 +112,7 @@ class Pipeline
      */
     public function validate(callable $callback): self
     {
-        return $this->pipe(fn(Row $row) => $callback($row) ? $row : self::SKIP);
+        return $this->pipe(fn(Row $row) => $callback($row) ? $row : self::getSkip());
     }
 
     /**
@@ -158,7 +158,7 @@ class Pipeline
         return $this->pipe(function (Row $row) use ($key, &$seenValues) {
             $value = $row->get($key);
             if (isset($seenValues[$value])) {
-                return self::SKIP;
+                return self::getSkip();
             }
             $seenValues[$value] = true;
             return $row;
@@ -304,32 +304,32 @@ class Pipeline
         }
         return $accumulator;
     }
-    
+
     public function get(): Traversable
     {
         return $this->iterator;
     }
 
-	/**
-	 * @param LoaderInterface $loader
-	 * @return Stats An object containing the statistics of the run.
-	 */
+    /**
+     * @param LoaderInterface $loader
+     * @return Stats An object containing the statistics of the run.
+     */
     public function load(LoaderInterface $loader): Stats
     {
-		$startTime = microtime(true);	
+        $startTime = microtime(true);
 
-		$rowsLoaded = $loader->load($this->iterator);
+        $rowsLoaded = $loader->load($this->iterator);
 
-		$endTime = microtime(true);
-		$duration = round($endTime - $startTime, 4);
+        $endTime = microtime(true);
+        $duration = round($endTime - $startTime, 4);
 
-		$peakMemory = round(memory_get_peak_usage(true) / 1024 / 1024, 4);
+        $peakMemory = round(memory_get_peak_usage(true) / 1024 / 1024, 4);
 
-		return new Stats(
-			rowsLoaded: $rowsLoaded,
-			durationInSeconds: $duration,
-			peakMemoryUsageMb: $peakMemory
-		);
+        return new Stats(
+            rowLoaded: $rowsLoaded,
+            durationInSeconds: $duration,
+            peakMemoryUsageMb: $peakMemory
+        );
     }
 
     /**
@@ -345,7 +345,7 @@ class Pipeline
             foreach ($previousIterator as $row) {
                 try {
                     $result = $operation($row);
-                    if ($result !== self::SKIP) {
+                    if ($result !== self::getSkip()) {
                         yield $result;
                     }
                 } catch (Throwable $e) {
@@ -357,5 +357,13 @@ class Pipeline
         };
         $this->iterator = $generator();
         return $this;
+    }
+
+    public static function getSkip()
+    {
+        if (self::$SKIP === null) {
+            self::$SKIP = new stdClass();
+        }
+        return self::$SKIP;
     }
 }
