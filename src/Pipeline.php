@@ -305,9 +305,42 @@ class Pipeline
         return $accumulator;
     }
 
+    /** @return Traversable  */
     public function get(): Traversable
     {
         return $this->iterator;
+    }
+
+    /**
+     * @param int $limit 
+     * @return Pipeline 
+     * @throws Throwable 
+     */
+    public function take(int $limit): self
+    {
+        return $this->pipe(function (Row $row) use (&$limit) {
+            if ($limit-- > 0) {
+                return $row;
+            }
+
+            $previousIterator = $this->iterator;
+
+            $takeGenerator = function () use ($limit, $previousIterator): Generator {
+                $count = 0;
+                foreach ($previousIterator as $row) {
+                    if ($count >= $limit) {
+                        return;
+                    } 
+
+                    yield $row;
+                    $count++;
+                }
+            };
+
+            $this->iterator = $takeGenerator();
+
+            return $this;
+        });
     }
 
     /**
@@ -351,6 +384,9 @@ class Pipeline
                 } catch (Throwable $e) {
                     if ($this->errorHandler) {
                         ($this->errorHandler)($e, $row);
+                    } else {
+                        // This prevents silent failures.
+                        throw $e;
                     }
                 }
             }
