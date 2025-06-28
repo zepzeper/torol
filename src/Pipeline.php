@@ -8,12 +8,15 @@ use Throwable;
 use Traversable;
 use Torol\Contracts\ExtractorInterface;
 use Torol\Contracts\LoaderInterface;
+use Torol\Support\Stats;
 
 class Pipeline
 {
     private static $SKIP;
 
     private Traversable $iterator;
+
+    /** @var callable|null $errorHandler */
     private $errorHandler = null;
 
     private function __construct(ExtractorInterface $extractor)
@@ -31,6 +34,7 @@ class Pipeline
         $this->errorHandler = $handler;
         return $this;
     }
+
 
     /**
      * Wraps the current iterator in a new generator that applies the map function.
@@ -216,18 +220,12 @@ class Pipeline
             }
 
             foreach ($previousIterator as $localRow) {
-                try {
-                    $joinValue = $localRow->get($localKey);
-                    if (isset($lookupMap[$joinValue])) {
-                        $mergedData = array_merge($localRow->toArray(), $lookupMap[$joinValue]);
-                        yield new Row($mergedData);
-                    } else {
-                        yield $localRow;
-                    }
-                } catch (Throwable $e) {
-                    if ($this->errorHandler) {
-                        ($this->errorHandler)($e, $localRow);
-                    }
+                $joinValue = $localRow->get($localKey);
+                if (isset($lookupMap[$joinValue])) {
+                    $mergedData = array_merge($localRow->toArray(), $lookupMap[$joinValue]);
+                    yield new Row($mergedData);
+                } else {
+                    yield $localRow;
                 }
             }
         };
@@ -312,35 +310,50 @@ class Pipeline
     }
 
     /**
-     * @param int $limit 
-     * @return Pipeline 
-     * @throws Throwable 
+     * @param int $limit
+     * @return Pipeline
+     * @throws Throwable
      */
     public function take(int $limit): self
     {
-        return $this->pipe(function (Row $row) use (&$limit) {
-            if ($limit-- > 0) {
-                return $row;
+        $previousIterator = $this->iterator;
+
+        $takeGenerator = function () use ($limit, $previousIterator): Generator {
+            if ($limit <= 0) {
+                return;
             }
-
-            $previousIterator = $this->iterator;
-
-            $takeGenerator = function () use ($limit, $previousIterator): Generator {
-                $count = 0;
-                foreach ($previousIterator as $row) {
-                    if ($count >= $limit) {
-                        return;
-                    } 
-
-                    yield $row;
-                    $count++;
+            $count = 0;
+            foreach ($previousIterator as $row) {
+                yield $row;
+                $count++;
+                if ($count >= $limit) {
+                    break;
                 }
-            };
+            }
+        };
 
-            $this->iterator = $takeGenerator();
+        $this->iterator = $takeGenerator();
+        return $this;
+    }
 
-            return $this;
-        });
+    public function takeWhile(callable $condition): self
+    {
+        $previousIterator = $this->iterator;
+
+        $takeWhileGenerator = function() use ($condition, $previousIterator): Generator {
+            foreach ($previousIterator as $row) {
+                // If condition is not met continue
+                if ($condition($row)) {
+                    yield $row;
+                } else {
+                    return;
+                }
+            }
+        };
+
+        $this->iterator = $takeWhileGenerator();
+
+        return $this;
     }
 
     /**
@@ -349,20 +362,20 @@ class Pipeline
      */
     public function load(LoaderInterface $loader): Stats
     {
-        $startTime = microtime(true);
+        $stats = new Stats();
+        $stats->start();
 
-        $rowsLoaded = $loader->load($this->iterator);
+        $generatorWithStats = function() use ($stats) {
+            foreach($this->iterator as $row) {
+                $stats->incrementRowsProcessed();
+                yield $row;
+            }
+        };
 
-        $endTime = microtime(true);
-        $duration = round($endTime - $startTime, 4);
+        $loader->load($generatorWithStats());
 
-        $peakMemory = round(memory_get_peak_usage(true) / 1024 / 1024, 4);
-
-        return new Stats(
-            rowLoaded: $rowsLoaded,
-            durationInSeconds: $duration,
-            peakMemoryUsageMb: $peakMemory
-        );
+        $stats->stop();
+        return $stats;
     }
 
     /**

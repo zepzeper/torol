@@ -2,24 +2,28 @@
 
 require_once "../vendor/autoload.php";
 
-use Torol\Extractors\ArrayExtractor;
+use Torol\Builder\ApiExtractorBuilder;
 use Torol\Loaders\CallbackLoader;
 use Torol\Pipeline;
 use Torol\Row;
 
+$builder = new ApiExtractorBuilder('https://dummyjson.com');
+$builder->endpoint('/products')
+    ->withDataKey('products')
+    ->withOffsetPagination(10, 'limit', 'skip');
 
-$sourceData = [
-	['id' => '1', 'price' => '99.99', 'is_active' => '1', 'is_featured' => 'false'],
-];
-
-$results = [];
-
-Pipeline::from(new ArrayExtractor($sourceData))
-	->cast('id', 'int')
-	->cast('price', 'float')
-	->cast('is_active', 'bool')
-	->cast('is_featured', 'boolean') // Alias for bool
-    ->load(new CallbackLoader(function (Row $row) use (&$results) {
-        $results[] = $row->toArray();
+$stats = Pipeline::from($builder->build())
+    ->onError(function(Throwable $e, $context) {
+        echo "AN ERROR OCCURRED!\n";
+        echo $e->getMessage() . "\n";
+    })
+    ->takeWhile(function(Row $row) {
+        return $row->get('id') < 2;
+    })
+    ->tap(function(Row $row) {
+        var_dump($row->toArray());
+    })
+    ->load(new CallbackLoader(function(Row $row) {
     }));
 
+dd($stats);

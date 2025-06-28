@@ -2,27 +2,43 @@
 
 namespace Torol\Builder;
 
+use GuzzleHttp\ClientInterface;
 use LogicException;
 use Torol\Extractors\ApiExtractor;
 
-class ApiExtractorBuilder {
-
+class ApiExtractorBuilder
+{
     private string $endpoint;
     private array $headers = [];
     private array $queryParams = [];
     private ?array $auth = null;
     private ?array $pagination = null;
     private ?string $dataKey = "data";
+    private ?ClientInterface $client = null;
+
+    /** @var callable|null $paginationStopCondition */
+    private $paginationStopCondition = null;
 
     public function __construct(
-        private string $baseUri
+        private ?string $baseUri = null
     )
     {
     }
 
     /**
-     * @param string $endpoint 
-     * @return ApiExtractorBuilder 
+     * @param callable $condition
+     * @return ApiExtractorBuilder
+     */
+    public function withPaginationStopCondition(callable $condition): self
+    {
+        $this->paginationStopCondition = $condition;
+
+        return $this;
+    }
+
+    /**
+     * @param string $endpoint
+     * @return ApiExtractorBuilder
      */
     public function endpoint(string $endpoint): self
     {
@@ -31,12 +47,18 @@ class ApiExtractorBuilder {
         return $this;
     }
 
+    public function withHttpClient(ClientInterface $client): self
+    {
+        $this->client = $client;
+        return $this;
+    }
+
     /**
-     * @param string $key 
-     * @param string $value 
-     * @return ApiExtractorBuilder 
+     * @param string $key
+     * @param string $value
+     * @return ApiExtractorBuilder
      */
-    public function withHeader(string $key, string $value): self 
+    public function withHeader(string $key, string $value): self
     {
         $this->headers[$key] = $value;
 
@@ -44,10 +66,10 @@ class ApiExtractorBuilder {
     }
 
     /**
-     * @param array<string, string> $headers 
-     * @return ApiExtractorBuilder 
+     * @param array<string, string> $headers
+     * @return ApiExtractorBuilder
      */
-    public function withHeaders(array $headers): self 
+    public function withHeaders(array $headers): self
     {
         foreach ($headers as $key => $value) {
             $this->headers[$key] = $value;
@@ -57,9 +79,9 @@ class ApiExtractorBuilder {
     }
 
     /**
-     * @param string $key 
-     * @param string $value 
-     * @return ApiExtractorBuilder 
+     * @param string $key
+     * @param string $value
+     * @return ApiExtractorBuilder
      */
     public function withQueryParam(string $key, string $value): self
     {
@@ -69,10 +91,10 @@ class ApiExtractorBuilder {
     }
 
     /**
-     * @param array<string, string> $headers 
-     * @return ApiExtractorBuilder 
+     * @param array<string, string> $headers
+     * @return ApiExtractorBuilder
      */
-    public function withQueryParams(array $params): self 
+    public function withQueryParams(array $params): self
     {
         foreach ($params as $key => $value) {
             $this->queryParams[$key] = $value;
@@ -82,10 +104,10 @@ class ApiExtractorBuilder {
     }
 
     /**
-     * @param string $key 
-     * @param string $token 
-     * @param string $in 
-     * @return ApiExtractorBuilder 
+     * @param string $key
+     * @param string $token
+     * @param string $in
+     * @return ApiExtractorBuilder
      */
     public function withApiKey(string $key, string $token, string $in = 'header'): self
     {
@@ -99,9 +121,9 @@ class ApiExtractorBuilder {
     }
 
     /**
-     * @param string $username 
-     * @param string $password 
-     * @return ApiExtractorBuilder 
+     * @param string $username
+     * @param string $password
+     * @return ApiExtractorBuilder
      */
     public function withBasicAuth(string $username, string $password): self
     {
@@ -114,11 +136,11 @@ class ApiExtractorBuilder {
     }
 
     /**
-     * @param string $tokenUrl 
-     * @param string $clientId 
-     * @param string $clientSecret 
-     * @param array $scopes 
-     * @return ApiExtractorBuilder 
+     * @param string $tokenUrl
+     * @param string $clientId
+     * @param string $clientSecret
+     * @param array $scopes
+     * @return ApiExtractorBuilder
      */
     public function withOAuth2ClientCredentials(string $tokenUrl, string $clientId, string $clientSecret, array $scopes = []): self
     {
@@ -134,10 +156,10 @@ class ApiExtractorBuilder {
     }
 
     /**
-     * @param int $limit 
-     * @param string $limitParam 
-     * @param string $pageParam 
-     * @return ApiExtractorBuilder 
+     * @param int $limit
+     * @param string $limitParam
+     * @param string $pageParam
+     * @return ApiExtractorBuilder
      */
     public function withOffsetPagination(int $limit = 100, string $limitParam = 'limit', string $pageParam = 'page'): self
     {
@@ -160,8 +182,8 @@ class ApiExtractorBuilder {
     }
 
     /**
-     * @param null|string $key 
-     * @return ApiExtractorBuilder 
+     * @param null|string $key
+     * @return ApiExtractorBuilder
      */
     public function withDataKey(?string $key): self
     {
@@ -171,13 +193,17 @@ class ApiExtractorBuilder {
 
 
     /**
-     * @return ApiExtractor 
-     * @throws LogicException 
+     * @return ApiExtractor
+     * @throws LogicException
      */
     public function build(): ApiExtractor
     {
+        if (empty($this->baseUri) && empty($this->client)) {
+            throw new LogicException("Cannot build ApiExtractor without a base URI or an HTTP client.");
+        }
+
         if (empty($this->endpoint)) {
-            throw new \LogicException("Cannot build ApiExtractor without an endpoint.");
+            throw new LogicException("Cannot build ApiExtractor without an endpoint.");
         }
 
         return ApiExtractor::from($this);
@@ -190,4 +216,6 @@ class ApiExtractorBuilder {
     public function getAuth(): ?array { return $this->auth; }
     public function getPagination(): ?array { return $this->pagination; }
     public function getDataKey(): ?string { return $this->dataKey; }
+    public function getHttpClient(): ?ClientInterface { return $this->client; }
+    public function getPaginationStopCondition(): ?callable { return $this->paginationStopCondition; }
 }
