@@ -1,33 +1,125 @@
-Torol - A Fluent ETL Library for PHPTorol is a modern, fluent, and highly scalable ETL (Extract, Transform, Load) library for PHP. It's designed to make complex data transformation pipelines readable, testable, and memory-efficient.Inspired by Laravel Collections, Torol treats data processing as a chain of expressive, readable steps, allowing you to handle large datasets from files and databases with a minimal memory footprint, thanks to its use of PHP Generators.FeaturesFluent & Expressive API: Write data pipelines that read like a sentence.Scalable by Default: Process large files (CSVs, JSON) and database tables with very low memory usage.Pluggable Architecture: Easily extend the library with custom Extractors and Loaders.Rich Transformation Suite: A wide array of methods for filtering, mapping, cleaning, and restructuring data.Robust Error Handling: Gracefully handle bad rows without crashing your entire import process.Quick Start ExampleImagine you need to process a users.csv file, filter for only the active users, standardize their email addresses to lowercase, and then load them into a subscribers database table.With Torol, it's this simple:<?php
+# Torol: A Simple and Elegant ETL Library for PHP
+
+Torol is a modern, memory-efficient, and highly readable ETL (Extract, Transform, Load) library for PHP. Inspired by the simplicity of Laravel Collections, Torol provides a fluent, chainable API to build powerful data processing pipelines with minimal effort.
+
+It's designed to handle large datasets with ease by processing data row-by-row using PHP Generators, ensuring a low memory footprint regardless of the data size.
+
+## Why Choose Torol?
+
+- **Fluent & Readable API**: Chain methods together to create clean and self-documenting data pipelines.
+- **Memory Efficient**: Built with generators to process massive files (CSV, JSON, XML) without running out of memory.
+- **Easily Extensible**: Add your own custom data sources (Extractors) and destinations (Loaders) with a simple interface.
+- **Rich Transformations**: A comprehensive set of transformation methods to cover the most common data manipulation tasks.
+- **Modern & Tested**: Built for modern PHP (^8.1+) and comes with a thorough test suite.
+
+## Installation
+
+You can install Torol via Composer.
+
+```bash
+composer require torol/torol
+```
+
+### Optional Dependencies
+
+Torol is modular. To use certain extractors, you may need to install additional packages.
+
+```bash
+# To use the ExcelExtractor
+composer require phpoffice/phpspreadsheet
+
+# To use the S3Extractor
+composer require aws/aws-sdk-php
+
+# For making API requests with ApiExtractor
+composer require guzzlehttp/guzzle
+```
+
+## Quick Start
+
+Here's a simple example of how to read user data from a CSV file, add a new column, filter for active users, and then load the results into a new JSON file.
+
+Assume you have a `users.csv` file:
+
+```csv
+id,name,email,status
+1,John Doe,john@example.com,active
+2,Jane Smith,jane@example.com,inactive
+3,Peter Jones,peter@example.com,active
+```
+
+Now, let's process it with Torol:
+
+```php
+<?php
 
 require 'vendor/autoload.php';
 
-use Zepzeper\Torol\Pipeline;
-use Zepzeper\Torol\Extractors\CsvExtractor;
-use Zepzeper\Torol\Loaders\DatabaseLoader;
-use Zepzeper\Torol\Row;
+use Torol\Extractors\CsvExtractor;
+use Torol\Loaders\JsonLoader;
+use Torol\Pipeline;
 
-// Your PDO connection
-$pdo = new PDO('sqlite:database.sqlite');
+$pipeline = new Pipeline(
+    new CsvExtractor('path/to/users.csv')
+);
 
-$stats = Pipeline::from(new CsvExtractor('path/to/users.csv'))
-    // Keep only rows where the 'status' column is 'active'
-    ->filter(fn(Row $row) => $row->get('status') === 'active')
+$stats = $pipeline
+    ->map(function (array $row) {
+        // Convert status to uppercase
+        $row['status'] = strtoupper($row['status']);
+        return $row;
+    })
+    ->filter(function (array $row) {
+        // Keep only active users
+        return $row['status'] === 'ACTIVE';
+    })
+    ->addColumn('processed_at', fn() => date('Y-m-d H:i:s'))
+    ->load(
+        new JsonLoader('path/to/active_users.json')
+    );
 
-    // Standardize the email address
-    ->map(fn(Row $row) => $row->set('email', strtolower($row->get('email'))))
+print_r($stats->toArray());
+```
 
-    // Rename a column to match our database schema
-    ->renameColumn('first_name', 'name')
+This will create an `active_users.json` file with the following content:
 
-    // Keep only the columns we need
-    ->select(['id', 'name', 'email'])
-    
-    // Load the final data into the 'subscribers' table
-    ->load(new DatabaseLoader($pdo, 'subscribers'));
+```json
+[
+    {
+        "id": "1",
+        "name": "John Doe",
+        "email": "john@example.com",
+        "status": "ACTIVE",
+        "processed_at": "2024-10-26 10:30:00"
+    },
+    {
+        "id": "3",
+        "name": "Peter Jones",
+        "email": "peter@example.com",
+        "status": "ACTIVE",
+        "processed_at": "2024-10-26 10:30:00"
+    }
+]
+```
 
-echo "Successfully loaded {$stats->rowsLoaded} records in {$stats->durationInSeconds} seconds.";
+## Available Components
 
-InstallationYou can install the library via Composer:composer require zepzeper/torol
-(Note: This package name is a placeholder until you publish it on Packagist.)Documentation(This is where you'll add links to the more detailed documentation you'll write in the /docs directory.)Getting StartedExtractorsArrayExtractorCsvExtractorJsonExtractorDatabaseExtractorTransformersmap, filter, validate, tapaddColumn, removeColumn, renameColumn, selectcast, unique, when, nestsort, mergegroupBy, reduceLoadersCallbackLoaderCsvLoaderJsonLoaderDatabaseLoaderError HandlingStatisticsTestingThis library maintains a high standard of code quality and is fully tested. To run the test suite:./vendor/bin/pest
-LicenseThe Torol library is open-sourced software licensed under the MIT license.
+Torol comes with a variety of built-in components to get you started quickly.
+
+| Component Type | Available Implementations |
+|----------------|---------------------------|
+| **Extractors** | `Array`, `Csv`, `Database`, `Json`, `Api`, `Excel`, `Xml`, `S3` |
+| **Loaders** | `Callback`, `Csv`, `Database`, `Json` |
+| **Transformers** | `map`, `filter`, `addColumn`, `removeColumn`, `renameColumn`, `select`, `merge`, `nest`, `sort`, `groupBy`, `unique`, `validate`, `dd`, and many more. |
+
+## Full Documentation
+
+For detailed information on every component and feature, please see the documentation in the `/docs` directory.
+
+- **Detailed Extractor Docs**
+- **Detailed Transformer Docs**
+- **Detailed Loader Docs**
+
+## License
+
+Torol is open-source software licensed under the MIT license.

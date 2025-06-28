@@ -4,6 +4,7 @@ namespace Torol;
 
 use Generator;
 use stdClass;
+use Symfony\Component\VarDumper\VarDumper;
 use Throwable;
 use Traversable;
 use Torol\Contracts\ExtractorInterface;
@@ -33,6 +34,28 @@ class Pipeline
     {
         $this->errorHandler = $handler;
         return $this;
+    }
+
+    /**
+     * @param ...$args
+     * @return never
+     */
+    public function dd(...$args): never
+    {
+        $item = $args->get();
+
+        if (count($args) > 1) {
+            $items = $args;
+        }
+
+        if (class_exists(VarDumper::class)) {
+            dd($items);
+        } else {
+            echo "Warning: symfony/var-dumper not found. Using default var_dump().\n";
+            var_dump($items);
+        }
+
+        exit(1);
     }
 
 
@@ -415,4 +438,5 @@ class Pipeline
         }
         return self::$SKIP;
     }
+
 }

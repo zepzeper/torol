@@ -19,6 +19,9 @@ class JsonExtractor implements ExtractorInterface
         private string $sourceFile,
         private ?string $jsonPointer = null
     ) {
+        if (!class_exists(JsonMachine::class)) {
+            throw new RuntimeException('The "halaxa/json-machine" package is required. Please run "composer require halaxa/json-machine".');
+        }
     }
 
     /**
@@ -28,10 +31,6 @@ class JsonExtractor implements ExtractorInterface
      */
     public function extract(): Traversable
     {
-        if (!class_exists(JsonMachine::class)) {
-            throw new RuntimeException('The "halaxa/json-machine" package is required. Please run "composer require halaxa/json-machine".');
-        }
-
         if (!file_exists($this->sourceFile)) {
             throw new RuntimeException("File not found at path: {$this->sourceFile}");
         }

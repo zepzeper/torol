@@ -18,8 +18,9 @@ $stats = Pipeline::from($builder->build())
         echo $e->getMessage() . "\n";
     })
     ->takeWhile(function(Row $row) {
-        return $row->get('id') < 2;
+        return $row->get('id') < 5;
     })
+    ->select(['id'])
     ->tap(function(Row $row) {
         var_dump($row->toArray());
     })

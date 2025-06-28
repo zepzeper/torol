@@ -1,0 +1,14 @@
+<store>
+    <inventory>
+        <product>
+            <id>101</id>
+            <name>Super Widget</name>
+            <price>19.99</price>
+        </product>
+        <product>
+            <id>102</id>
+            <name>Mega Gadget</name>
+            <price>29.99</price>
+        </product>
+    </inventory>
+</store>
